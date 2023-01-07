@@ -2,6 +2,7 @@ import React from 'react';
 import {
   Button,
   FlatList,
+  Linking,
   SafeAreaView,
   StyleSheet,
   Switch,
@@ -52,15 +53,36 @@ const styles = StyleSheet.create({
     backgroundColor: '#cce6e6',
     padding: 10,
     margin: 4,
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'space-between'
   },
   title: {
     fontSize: 14,
+    height: 40,
+    marginHorizontal: 0,
+    textAlignVertical: 'center', // only works on Android
+    ...Platform.select({
+        ios: {
+            lineHeight: 40 // as same as height
+        },
+        android: {}
+    })
   },
+  itemBtn: {
+    fontSize: 6
+  }
 });
 
-const Item = ({ title }) => (
+const Item = ({ title, location }) => (
   <View style={styles.item}>
     <Text style={styles.title}>{title}</Text>
+    <Button style={styles.itemBtn} title="Get Directions" onPress={() => {
+      console.log(location);
+      const daddr = location.join(',');
+      const company = Platform.OS === "ios" ? "apple" : "google";
+      Linking.openURL(`http://maps.${company}.com/maps?daddr=${daddr}`);
+    }} />
   </View>
 );
 
@@ -71,7 +93,7 @@ const FlatListBasics = () => {
   const [results, setResults] = React.useState([]);
   const toggleSwitch = () => setIsEnabled(previousState => !previousState);
   const renderItem = ({ item }) => (
-    <Item title={item.title} />
+    <Item title={item.title} location={item.location} />
   );
   return (
     <SafeAreaView style={styles.container}>
@@ -113,7 +135,6 @@ const FlatListBasics = () => {
         title = "Search"
         onPress={async () => {
           let newResults = await getResults(address, dist, !isEnabled);
-          console.log(newResults);
           setResults(newResults);
         }}
       />
@@ -143,7 +164,8 @@ async function getResults(address, dist, hideOccupied) {
     let responseJson = await response.json();
     return responseJson.records.map(record => ({
       id: record.fields.bay_id,
-      title: record.fields.dist
+      title: (Math.round((Number(record.fields.dist) + Number.EPSILON) * 100) / 100).toString() + "m away",
+      location: record.fields.location
     }));
   } catch (error) {
     console.error(error);
