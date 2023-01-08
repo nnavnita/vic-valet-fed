@@ -10,11 +10,15 @@ import {
   TextInput,
   View
 } from 'react-native';
+import {GooglePlacesAutocomplete} from 'react-native-google-places-autocomplete';
+import Constants from 'expo-constants';
 
 const styles = StyleSheet.create({
   container: {
-    margin: 50,
-    marginTop: 200,
+    flex: 1,
+    padding: 10,
+    paddingTop: Constants.statusBarHeight + 10,
+    backgroundColor: '#ecf0f1',
   },
   input: {
     height: 40,
@@ -86,33 +90,46 @@ const Item = ({ title, location }) => (
   </View>
 );
 
-const FlatListBasics = () => {
-  const [address, onChangeAddr] = React.useState(null);
-  const [dist, onChangeDist] = React.useState(null);
+const BasicScreen = () => {
+  const [address, setAddr] = React.useState(null);
+  const [dist, setDist] = React.useState(null);
   const [isEnabled, setIsEnabled] = React.useState(false);
   const [results, setResults] = React.useState([]);
+  const [apiKey, setApiKey] = React.useState(null);
   const toggleSwitch = () => setIsEnabled(previousState => !previousState);
   const renderItem = ({ item }) => (
     <Item title={item.title} location={item.location} />
   );
+  React.useEffect(() => {
+    async function fn() {
+    setApiKey(await getApiKey());
+    }
+    fn();
+  }, []);
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.heading}>
         VicValet
       </Text>
-      <TextInput
-        style={styles.input}
-        onChangeText={onChangeAddr}
-        value={address}
+      <GooglePlacesAutocomplete
         placeholder="Enter destination address"
+        query={{
+          key: apiKey,
+          language: 'en',
+          components: 'country:au',
+        }}
+        onPress={(data, details = null) => {
+        setAddr(data.description)
+      }}
       />
+      <View style= {{ paddingTop: 40 }} />
       <View style={styles.adj}>
         <Text style={styles.adjText}>
           Only show me parking bays within
         </Text>
         <TextInput
           style={styles.input}
-          onChangeText={onChangeDist}
+          onChangeText={setDist}
           value={dist}
           placeholder="500"
           keyboardType="numeric"
@@ -172,4 +189,16 @@ async function getResults(address, dist, hideOccupied) {
   }
 }
 
-export default FlatListBasics;
+async function getApiKey() {
+  try {
+    let response = await fetch('https://vicvalet-bed.herokuapp.com/getApiKey', {
+      method: 'GET'
+    });
+    let responseJson = await response.json();
+    return responseJson.key;
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+export default BasicScreen;
